@@ -69,6 +69,16 @@
     .down { background: var(--fail); box-shadow: 0 0 10px var(--fail); }
     .unknown { background: #6b7280; }
     .time { color: var(--muted); font-size: 0.9rem; display: inline-block; min-width: 50px; }
+    .domain-button {
+      background: none;
+      border: none;
+      color: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0;
+    }
+    .domain-button:hover { color: var(--accent); }
     footer {
       display: flex;
       flex-direction: column;
@@ -142,7 +152,7 @@
       const row = document.createElement('div');
       row.className = 'grid';
       row.innerHTML = `
-        <div style="font-weight:600">${site.host}</div>
+        <div><button class='domain-button' onclick='window.open("https://${site.host}", "_blank")'>${site.host}</button></div>
         <div><div class="dot ${site.status}" id="dot-${idx}"></div></div>
         <div class="time rolling" id="time-${idx}"><span>${site.ping}</span></div>
         <div id="response-${idx}" class="time">—</div>
