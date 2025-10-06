@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Askansz — Status Page</title>
+  <style>
+    :root {
+      --bg: #020617;
+      --card: #0a1122;
+      --muted: #9ca3af;
+      --ok: #10b981;
+      --fail: #ef4444;
+      --accent: #3b82f6;
+      --glow: 0 0 20px rgba(59,130,246,0.6);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Inter', ui-sans-serif, system-ui;
+      background: radial-gradient(circle at top left, #0f172a 0%, #020617 80%);
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .wrap {
+      width: 100%;
+      max-width: 960px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255,255,255,0.03);
+      padding: 1rem 1.5rem;
+      border-radius: 1rem;
+      box-shadow: var(--glow);
+    }
+    h1 { margin: 0; font-size: 1.5rem; }
+    p.lead { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    .card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 1rem;
+      padding: 1rem 1.2rem;
+      box-shadow: 0 0 25px rgba(0,0,0,0.3);
+    }
+    input[type=text] {
+      flex: 1;
+      min-width: 200px;
+      background: rgba(255,255,255,0.05);
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.6rem 0.8rem;
+      color: #fff;
+    }
+    button {
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      padding: 0.6rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover { filter: brightness(1.2); }
+    button.secondary {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.05);
+      color: var(--muted);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 100px 120px 120px;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .head { color: var(--muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #64748b;
+      box-shadow: 0 0 10px rgba(255,255,255,0.1);
+      transition: background 0.3s, box-shadow 0.3s;
+    }
+    .ok { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+    .down { background: var(--fail); box-shadow: 0 0 10px var(--fail); }
+    .unknown { background: #6b7280; }
+    .time { color: var(--muted); font-size: 0.9rem; }
+    .actions button { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+    footer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div style="width:50px;height:50px;border-radius:12px;background:linear-gradient(180deg,var(--accent),#2563eb);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:1.3rem;">A</div>
+      <div>
+        <h1>Askansz — Status Page</h1>
+        <p class="lead">Automatically checks your domains and subdomains every 5 seconds.</p>
+      </div>
+    </header>
+
+    <section class="card">
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <input id="newDomain" type="text" placeholder="Add domain or subdomain (e.g. astrophotography.askansz.com)" />
+        <button id="addBtn">Add</button>
+        <button id="checkAll">Check all</button>
+        <button id="clearBtn" class="secondary">Clear list</button>
+      </div>
+      <div class="grid" style="margin-bottom:0.5rem;font-weight:700;">
+        <div class="head">Service</div>
+        <div class="head">Status</div>
+        <div class="head">Last checked</div>
+        <div class="head">Response</div>
+      </div>
+      <div id="sites"></div>
+    </section>
+
+    <footer>
+      <span>© 2025 Askansz</span>
+      <span>All rights reserved</span>
+      <span>Unauthorized use is prohibited</span>
+      <div class="contact">
+        Contact: <a href="mailto:contact@askansz.com" id="emailLink">contact@askansz.com</a>
+      </div>
+    </footer>
+  </div>
+
+<script>
+(() => {
+  const DEFAULT_SITES = [
+    'askansz.com',
+    'astrophotography.askansz.com',
+    'runstreak.askansz.com'
+  ];
+
+  const sitesContainer = document.getElementById('sites');
+  const newDomainInput = document.getElementById('newDomain');
+  const addBtn = document.getElementById('addBtn');
+  const checkAllBtn = document.getElementById('checkAll');
+  const clearBtn = document.getElementById('clearBtn');
+
+  let sites = loadSites() || DEFAULT_SITES.slice();
+
+  function saveSites() { localStorage.setItem('askansz_sites', JSON.stringify(sites)); }
+  function loadSites(){ try { return JSON.parse(localStorage.getItem('askansz_sites')||'null'); } catch(e){return null;} }
+
+  function render() {
+    sitesContainer.innerHTML = '';
+    sites.forEach((host, idx) => {
+      const row = document.createElement('div');
+      row.className = 'grid';
+      row.innerHTML = `
+        <div style="font-weight:600">${host}</div>
+        <div><div class="dot unknown" id="dot-${idx}"></div></div>
+        <div><div class="time" id="time-${idx}">—</div></div>
+        <div class="actions"><button data-idx="${idx}" class="secondary checkBtn">Check</button><button data-idx="${idx}" class="secondary removeBtn">Remove</button></div>
+      `;
+      sitesContainer.appendChild(row);
+    });
+    document.querySelectorAll('.checkBtn').forEach(b=>b.addEventListener('click',e=>{
+      const i = +e.currentTarget.dataset.idx; checkSite(i);
+    }));
+    document.querySelectorAll('.removeBtn').forEach(b=>b.addEventListener('click',e=>{
+      const i = +e.currentTarget.dataset.idx; sites.splice(i,1); saveSites(); render(); }));
+  }
+
+  function normalizeUrl(host) {
+    if (!/^https?:\/\//i.test(host)) host = 'https://' + host;
+    return host.replace(/\/$/,'') + '/favicon.ico';
+  }
+
+  function checkSite(i) {
+    const host = sites[i];
+    const url = normalizeUrl(host);
+    const dot = document.getElementById('dot-' + i);
+    const timeEl = document.getElementById('time-' + i);
+    if (!dot || !timeEl) return;
+    dot.className = 'dot unknown';
+    timeEl.textContent = 'checking...';
+
+    let handled = false;
+    const img = new Image();
+    const start = Date.now();
+    let timeout = setTimeout(()=>{
+      if (handled) return; handled = true;
+      dot.className = 'dot down';
+      timeEl.textContent = 'timeout';
+    }, 10000);
+
+    img.onload = () => {
+      if (handled) return; handled = true; clearTimeout(timeout);
+      dot.className = 'dot ok';
+      const ms = Date.now() - start; timeEl.textContent = ms + ' ms';
+    };
+    img.onerror = () => {
+      if (handled) return;
+      fetch(url, {method: 'HEAD'})
+        .then(resp => {
+          handled = true; clearTimeout(timeout);
+          if (resp.ok) { dot.className = 'dot ok'; timeEl.textContent = (Date.now()-start)+' ms'; }
+          else { dot.className = 'dot down'; timeEl.textContent = resp.status+' '+resp.statusText; }
+        })
+        .catch(()=>{
+          if (handled) return; handled = true; clearTimeout(timeout);
+          dot.className = 'dot down'; timeEl.textContent = 'error';
+        });
+    };
+    img.src = url + '?_=' + Date.now();
+  }
+
+  function checkAll() {
+    sites.forEach((s, i) => checkSite(i));
+  }
+
+  addBtn.addEventListener('click', ()=>{
+    const v = newDomainInput.value.trim(); if (!v) return;
+    const clean = v.replace(/^https?:\/\//,'').replace(/\/*$/,'');
+    if (!sites.includes(clean)) sites.push(clean);
+    saveSites(); render(); newDomainInput.value='';
+  });
+
+  checkAllBtn.addEventListener('click', ()=> checkAll());
+  clearBtn.addEventListener('click', ()=>{ if (confirm('Clear saved sites?')){ sites = []; saveSites(); render(); } });
+
+  newDomainInput.addEventListener('keydown', e=>{ if (e.key==='Enter'){ addBtn.click(); } });
+
+  render();
+  setTimeout(checkAll, 500);
+  setInterval(checkAll, 5000); // auto refresh every 5s
+})();
+</script>
+</body>
+</html>
