@@ -68,7 +68,7 @@
     .ok { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
     .down { background: var(--fail); box-shadow: 0 0 10px var(--fail); }
     .unknown { background: #6b7280; }
-    .time { color: var(--muted); font-size: 0.9rem; }
+    .time { color: var(--muted); font-size: 0.9rem; display: inline-block; min-width: 50px; }
     footer {
       display: flex;
       flex-direction: column;
@@ -79,6 +79,20 @@
     }
     footer a { color: var(--accent); text-decoration: none; }
     footer a:hover { text-decoration: underline; }
+    .rolling {
+      display: inline-block;
+      overflow: hidden;
+      vertical-align: bottom;
+      line-height: 1em;
+    }
+    .rolling span {
+      display: block;
+      transform: translateY(100%);
+      transition: transform 0.5s ease-out;
+    }
+    .rolling.active span {
+      transform: translateY(0);
+    }
   </style>
 </head>
 <body>
@@ -113,7 +127,6 @@
 
 <script>
 (() => {
-  // Only these three sites are checked by default. Edit this array in the source to change.
   const DEFAULT_SITES = [
     'askansz.com',
     'astrophotography.askansz.com',
@@ -121,17 +134,17 @@
   ];
 
   const sitesContainer = document.getElementById('sites');
-  const sites = DEFAULT_SITES.slice();
+  const sites = DEFAULT_SITES.map(host => ({ host, status: 'unknown', ping: '—' }));
 
   function render() {
     sitesContainer.innerHTML = '';
-    sites.forEach((host, idx) => {
+    sites.forEach((site, idx) => {
       const row = document.createElement('div');
       row.className = 'grid';
       row.innerHTML = `
-        <div style="font-weight:600">${host}</div>
-        <div><div class="dot unknown" id="dot-${idx}"></div></div>
-        <div><div class="time" id="time-${idx}">—</div></div>
+        <div style="font-weight:600">${site.host}</div>
+        <div><div class="dot ${site.status}" id="dot-${idx}"></div></div>
+        <div class="time rolling" id="time-${idx}"><span>${site.ping}</span></div>
         <div id="response-${idx}" class="time">—</div>
       `;
       sitesContainer.appendChild(row);
@@ -143,45 +156,68 @@
     return host.replace(/\/$/,'') + '/favicon.ico';
   }
 
+  function updatePingAnimation(idx, newPing) {
+    const timeEl = document.getElementById('time-' + idx);
+    if (!timeEl) return;
+    const span = timeEl.querySelector('span');
+    if (!span) return;
+    if (span.textContent === newPing) return;
+    span.textContent = newPing;
+    timeEl.classList.remove('active');
+    void timeEl.offsetWidth;
+    timeEl.classList.add('active');
+  }
+
   function checkSite(i) {
-    const host = sites[i];
-    const url = normalizeUrl(host);
+    const site = sites[i];
+    const url = normalizeUrl(site.host);
     const dot = document.getElementById('dot-' + i);
-    const timeEl = document.getElementById('time-' + i);
     const respEl = document.getElementById('response-' + i);
-    if (!dot || !timeEl) return;
-    dot.className = 'dot unknown';
-    timeEl.textContent = 'checking...';
-    respEl.textContent = '—';
+
+    if (!dot || !respEl) return;
 
     let handled = false;
     const img = new Image();
     const start = Date.now();
     let timeout = setTimeout(()=>{
       if (handled) return; handled = true;
+      site.status = 'down';
       dot.className = 'dot down';
-      timeEl.textContent = 'timeout';
+      updatePingAnimation(i, 'timeout');
       respEl.textContent = 'Offline';
     }, 10000);
 
     img.onload = () => {
       if (handled) return; handled = true; clearTimeout(timeout);
+      site.status = 'ok';
       dot.className = 'dot ok';
-      const ms = Date.now() - start; timeEl.textContent = ms + ' ms';
+      const ms = Date.now() - start;
+      updatePingAnimation(i, ms + ' ms');
       respEl.textContent = 'Online';
     };
+
     img.onerror = () => {
       if (handled) return;
-      fetch(url, {method: 'HEAD'})
-        .then(resp => {
-          handled = true; clearTimeout(timeout);
-          if (resp.ok) { dot.className = 'dot ok'; timeEl.textContent = (Date.now()-start)+' ms'; respEl.textContent = 'Online'; }
-          else { dot.className = 'dot down'; timeEl.textContent = resp.status+' '+resp.statusText; respEl.textContent = 'Error'; }
-        })
-        .catch(()=>{
-          if (handled) return; handled = true; clearTimeout(timeout);
-          dot.className = 'dot down'; timeEl.textContent = 'error'; respEl.textContent = 'Offline';
-        });
+      fetch(url, {method:'HEAD'}).then(resp => {
+        handled = true; clearTimeout(timeout);
+        if (resp.ok) {
+          site.status = 'ok';
+          dot.className = 'dot ok';
+          updatePingAnimation(i, (Date.now()-start)+' ms');
+          respEl.textContent = 'Online';
+        } else {
+          site.status = 'down';
+          dot.className = 'dot down';
+          updatePingAnimation(i, resp.status + '');
+          respEl.textContent = 'Error';
+        }
+      }).catch(()=>{
+        if (handled) return; handled = true; clearTimeout(timeout);
+        site.status = 'down';
+        dot.className = 'dot down';
+        updatePingAnimation(i, 'error');
+        respEl.textContent = 'Offline';
+      });
     };
     img.src = url + '?_=' + Date.now();
   }
