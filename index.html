@@ -50,31 +50,6 @@
       padding: 1rem 1.2rem;
       box-shadow: 0 0 25px rgba(0,0,0,0.3);
     }
-    input[type=text] {
-      flex: 1;
-      min-width: 200px;
-      background: rgba(255,255,255,0.05);
-      border: none;
-      border-radius: 0.5rem;
-      padding: 0.6rem 0.8rem;
-      color: #fff;
-    }
-    button {
-      background: var(--accent);
-      border: none;
-      color: #fff;
-      padding: 0.6rem 1rem;
-      border-radius: 0.5rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    button:hover { filter: brightness(1.2); }
-    button.secondary {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.05);
-      color: var(--muted);
-    }
     .grid {
       display: grid;
       grid-template-columns: 1fr 100px 120px 120px;
@@ -112,16 +87,11 @@
       <div style="width:50px;height:50px;border-radius:12px;background:linear-gradient(180deg,var(--accent),#2563eb);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:1.3rem;">A</div>
       <div>
         <h1>Askansz — Status Page</h1>
-        <p class="lead">Automatically checks your domains and subdomains every 5 seconds.</p>
+        <p class="lead">Automatically checks these domains every 5 seconds. To add or remove hosts, edit the <code>DEFAULT_SITES</code> array in the source.</p>
       </div>
     </header>
 
     <section class="card">
-      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
-        <input id="newDomain" type="text" placeholder="Add domain or subdomain (e.g. astrophotography.askansz.com)" />
-        <button id="addBtn">Add</button>
-        <button id="clearBtn" class="secondary">Clear list</button>
-      </div>
       <div class="grid" style="margin-bottom:0.5rem;font-weight:700;">
         <div class="head">Service</div>
         <div class="head">Status</div>
@@ -143,6 +113,7 @@
 
 <script>
 (() => {
+  // Only these three sites are checked by default. Edit this array in the source to change.
   const DEFAULT_SITES = [
     'askansz.com',
     'astrophotography.askansz.com',
@@ -150,14 +121,7 @@
   ];
 
   const sitesContainer = document.getElementById('sites');
-  const newDomainInput = document.getElementById('newDomain');
-  const addBtn = document.getElementById('addBtn');
-  const clearBtn = document.getElementById('clearBtn');
-
-  let sites = loadSites() || DEFAULT_SITES.slice();
-
-  function saveSites() { localStorage.setItem('askansz_sites', JSON.stringify(sites)); }
-  function loadSites(){ try { return JSON.parse(localStorage.getItem('askansz_sites')||'null'); } catch(e){return null;} }
+  const sites = DEFAULT_SITES.slice();
 
   function render() {
     sitesContainer.innerHTML = '';
@@ -197,6 +161,7 @@
       if (handled) return; handled = true;
       dot.className = 'dot down';
       timeEl.textContent = 'timeout';
+      respEl.textContent = 'Offline';
     }, 10000);
 
     img.onload = () => {
@@ -224,17 +189,6 @@
   function checkAll() {
     sites.forEach((s, i) => checkSite(i));
   }
-
-  addBtn.addEventListener('click', ()=>{
-    const v = newDomainInput.value.trim(); if (!v) return;
-    const clean = v.replace(/^https?:\/\//,'').replace(/\/*$/,'');
-    if (!sites.includes(clean)) sites.push(clean);
-    saveSites(); render(); newDomainInput.value='';
-  });
-
-  clearBtn.addEventListener('click', ()=>{ if (confirm('Clear saved sites?')){ sites = []; saveSites(); render(); } });
-
-  newDomainInput.addEventListener('keydown', e=>{ if (e.key==='Enter'){ addBtn.click(); } });
 
   render();
   setTimeout(checkAll, 500);
