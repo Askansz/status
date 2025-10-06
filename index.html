@@ -94,7 +94,6 @@
     .down { background: var(--fail); box-shadow: 0 0 10px var(--fail); }
     .unknown { background: #6b7280; }
     .time { color: var(--muted); font-size: 0.9rem; }
-    .actions button { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
     footer {
       display: flex;
       flex-direction: column;
@@ -121,7 +120,6 @@
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
         <input id="newDomain" type="text" placeholder="Add domain or subdomain (e.g. astrophotography.askansz.com)" />
         <button id="addBtn">Add</button>
-        <button id="checkAll">Check all</button>
         <button id="clearBtn" class="secondary">Clear list</button>
       </div>
       <div class="grid" style="margin-bottom:0.5rem;font-weight:700;">
@@ -154,7 +152,6 @@
   const sitesContainer = document.getElementById('sites');
   const newDomainInput = document.getElementById('newDomain');
   const addBtn = document.getElementById('addBtn');
-  const checkAllBtn = document.getElementById('checkAll');
   const clearBtn = document.getElementById('clearBtn');
 
   let sites = loadSites() || DEFAULT_SITES.slice();
@@ -171,15 +168,10 @@
         <div style="font-weight:600">${host}</div>
         <div><div class="dot unknown" id="dot-${idx}"></div></div>
         <div><div class="time" id="time-${idx}">—</div></div>
-        <div class="actions"><button data-idx="${idx}" class="secondary checkBtn">Check</button><button data-idx="${idx}" class="secondary removeBtn">Remove</button></div>
+        <div id="response-${idx}" class="time">—</div>
       `;
       sitesContainer.appendChild(row);
     });
-    document.querySelectorAll('.checkBtn').forEach(b=>b.addEventListener('click',e=>{
-      const i = +e.currentTarget.dataset.idx; checkSite(i);
-    }));
-    document.querySelectorAll('.removeBtn').forEach(b=>b.addEventListener('click',e=>{
-      const i = +e.currentTarget.dataset.idx; sites.splice(i,1); saveSites(); render(); }));
   }
 
   function normalizeUrl(host) {
@@ -192,9 +184,11 @@
     const url = normalizeUrl(host);
     const dot = document.getElementById('dot-' + i);
     const timeEl = document.getElementById('time-' + i);
+    const respEl = document.getElementById('response-' + i);
     if (!dot || !timeEl) return;
     dot.className = 'dot unknown';
     timeEl.textContent = 'checking...';
+    respEl.textContent = '—';
 
     let handled = false;
     const img = new Image();
@@ -209,18 +203,19 @@
       if (handled) return; handled = true; clearTimeout(timeout);
       dot.className = 'dot ok';
       const ms = Date.now() - start; timeEl.textContent = ms + ' ms';
+      respEl.textContent = 'Online';
     };
     img.onerror = () => {
       if (handled) return;
       fetch(url, {method: 'HEAD'})
         .then(resp => {
           handled = true; clearTimeout(timeout);
-          if (resp.ok) { dot.className = 'dot ok'; timeEl.textContent = (Date.now()-start)+' ms'; }
-          else { dot.className = 'dot down'; timeEl.textContent = resp.status+' '+resp.statusText; }
+          if (resp.ok) { dot.className = 'dot ok'; timeEl.textContent = (Date.now()-start)+' ms'; respEl.textContent = 'Online'; }
+          else { dot.className = 'dot down'; timeEl.textContent = resp.status+' '+resp.statusText; respEl.textContent = 'Error'; }
         })
         .catch(()=>{
           if (handled) return; handled = true; clearTimeout(timeout);
-          dot.className = 'dot down'; timeEl.textContent = 'error';
+          dot.className = 'dot down'; timeEl.textContent = 'error'; respEl.textContent = 'Offline';
         });
     };
     img.src = url + '?_=' + Date.now();
@@ -237,14 +232,13 @@
     saveSites(); render(); newDomainInput.value='';
   });
 
-  checkAllBtn.addEventListener('click', ()=> checkAll());
   clearBtn.addEventListener('click', ()=>{ if (confirm('Clear saved sites?')){ sites = []; saveSites(); render(); } });
 
   newDomainInput.addEventListener('keydown', e=>{ if (e.key==='Enter'){ addBtn.click(); } });
 
   render();
   setTimeout(checkAll, 500);
-  setInterval(checkAll, 5000); // auto refresh every 5s
+  setInterval(checkAll, 5000);
 })();
 </script>
 </body>
